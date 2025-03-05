@@ -1,43 +1,29 @@
 import pygame
 import random
+import sys
 
 pygame.init()
 pygame.display.set_caption('Snake in Python!')
 pygame.font.init()
 running = True
-clock = pygame.time.Clock()
-elapsed_frames = 0
 
 num_cols = 21 # odd number so that there's a definite middle
 num_rows = 21
 block_size = 36
 screen = pygame.display.set_mode((num_cols * block_size, num_rows * block_size))
 
-score = 0
-direction = "right" # can be up, down, right, or left
-apple_location = ( # apple always starts in the middle of the grid
-  (num_cols - 1) / 2 * block_size,
-  (num_rows - 1) / 2 * block_size
-)
-snake_head = [4 * block_size, 4 * block_size]
-snake_locations = [
-  snake_head,
-  (snake_head[0], 3 * block_size),
-  (snake_head[0], 2 * block_size),
-  (snake_head[0], 1 * block_size),
-  (snake_head[0], 0)
-]
-
-def is_game_over():
-  if not 0 <= snake_head[0] < screen.get_width():
+def is_game_over(snake_locations):
+  if not 0 <= snake_locations[0][0] < screen.get_width():
     return True
-  if not 0 <= snake_head[1] < screen.get_height():
+  if not 0 <= snake_locations[0][1] < screen.get_height():
     return True
-  if snake_head in snake_locations[1:]:
+  if snake_locations[0] in snake_locations[1:]:
     return True
   return False
 
-def render_game_over_screen():
+
+def render_game_over_screen(score):
+  global screen
   screen.fill("black")
   font = pygame.font.SysFont("Arial", 30)
   surface = font.render("Game Over!", False, "white")
@@ -51,12 +37,40 @@ def render_game_over_screen():
     (screen.get_width() / 2) - (score_surface.get_width() / 2),
     (screen.get_height() / 2) - (surface.get_height() / 2) + 50
   ))
+  play_again_surface = score_font.render(f"Press SPACE to play again", False, "white")
+  screen.blit(play_again_surface, (
+    (screen.get_width() / 2) - (play_again_surface.get_width() / 2),
+    (screen.get_height() / 2) - (score_surface.get_height() / 2) + 100
+  ))
+  pygame.display.update()
+  pygame.time.wait(2000)
 
-if __name__ == "__main__":
+
+def play_game():
+  global running
+  clock = pygame.time.Clock()
+  elapsed_frames = 0
+  score = 0
+  direction = "right" # can be up, down, right, or left
+  apple_location = ( # apple always starts in the middle of the grid
+    (num_cols - 1) / 2 * block_size,
+    (num_rows - 1) / 2 * block_size
+  )
+  snake_locations = [
+    [4 * block_size, 4 * block_size], # index 0 is always the head
+    (4 * block_size, 3 * block_size),
+    (4 * block_size, 2 * block_size),
+    (4 * block_size, 1 * block_size),
+    (4 * block_size, 0)
+  ]
+  is_playing = True
+
   while running:
     for event in pygame.event.get():
       if event.type == pygame.QUIT:
         running = False
+        pygame.quit()
+        sys.exit()
       if event.type == pygame.KEYDOWN:
         if event.key == pygame.K_UP and direction != "down":
           direction = "up"
@@ -66,6 +80,8 @@ if __name__ == "__main__":
           direction = "left"
         if event.key == pygame.K_RIGHT and direction != "left":
           direction = "right"
+        if event.key == pygame.K_SPACE and not is_playing:
+          play_game()
 
     screen.fill("black")
 
@@ -92,21 +108,20 @@ if __name__ == "__main__":
     # move snake every other frame
     if elapsed_frames % 2 == 0:
       if direction == "right":
-        new_head = [snake_head[0] + block_size, snake_head[1]]
+        new_head = [snake_locations[0][0] + block_size, snake_locations[0][1]]
       if direction == "left":
-        new_head = [snake_head[0] - block_size, snake_head[1]]
+        new_head = [snake_locations[0][0] - block_size, snake_locations[0][1]]
       if direction == "up":
-        new_head = [snake_head[0], snake_head[1] - block_size]
+        new_head = [snake_locations[0][0], snake_locations[0][1] - block_size]
       if direction == "down":
-        new_head = [snake_head[0], snake_head[1] + block_size]
-      snake_head = new_head
+        new_head = [snake_locations[0][0], snake_locations[0][1] + block_size]
       new_locs = [new_head]
       for i in range(1, len(snake_locations)):
         new_locs.append(snake_locations[i - 1])
       snake_locations = new_locs
 
     # check if apple was eaten
-    if snake_head[0] == apple_location[0] and snake_head[1] == apple_location[1]:
+    if snake_locations[0][0] == apple_location[0] and snake_locations[0][1] == apple_location[1]:
       score += 1
       apple_location = ( # move the apple
         random.randint(0, num_cols - 1) * block_size,
@@ -115,11 +130,15 @@ if __name__ == "__main__":
       snake_locations.append(apple_location)
 
     # check if game over
-    if is_game_over():
-      # running = False
-      render_game_over_screen()
+    if is_game_over(snake_locations):
+      is_playing = False
+      render_game_over_screen(score)
         
     # flip frame
     pygame.display.update()
     clock.tick(30)
     elapsed_frames += 1
+
+
+if __name__ == "__main__":
+  play_game()
