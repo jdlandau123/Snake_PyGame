@@ -43,7 +43,7 @@ def render_game_over_screen(score):
     (screen.get_height() / 2) - (score_surface.get_height() / 2) + 100
   ))
   pygame.display.update()
-  pygame.time.wait(2000)
+  pygame.time.wait(1000)
 
 
 def play_game():
@@ -85,14 +85,42 @@ def play_game():
 
     screen.fill("black")
 
-    # draw the apple
-    apple = pygame.Rect(apple_location[0], apple_location[1], block_size, block_size)
-    pygame.draw.rect(screen, "red", apple)
+    # ensure the apple doesn't overlap with the snake
+    if list(apple_location) in snake_locations:
+      apple_location = (
+        random.randint(0, num_cols - 1) * block_size,
+        random.randint(0, num_rows - 1) * block_size
+      )
 
     # draw the snake
-    for loc in snake_locations:
-      rect = pygame.Rect(loc[0], loc[1], block_size, block_size)
-      pygame.draw.rect(screen, "green", rect)
+    for index, loc in enumerate(snake_locations):
+      if index == 0: # head
+        snake_head = pygame.image.load("./sprites/snake-head.png").convert()
+        if direction == "right":
+          snake_head = pygame.transform.rotate(snake_head, -90)
+        elif direction == "left":
+          snake_head = pygame.transform.rotate(snake_head, 90)
+        elif direction == "down":
+          snake_head = pygame.transform.rotate(snake_head, 180)
+        screen.blit(snake_head, loc)
+      elif index < len(snake_locations) - 1: # body
+        snake_body = pygame.image.load("./sprites/snake-body.png").convert()
+        if loc[0] != snake_locations[index + 1][0]:
+          snake_body = pygame.transform.rotate(snake_body, 90)
+        screen.blit(snake_body, loc)
+      elif index == len(snake_locations) - 1: # tail
+        snake_tail = pygame.image.load("./sprites/snake-tail.png").convert()
+        if loc[0] > snake_locations[index - 1][0]:
+          snake_tail = pygame.transform.rotate(snake_tail, 90)
+        elif loc[0] < snake_locations[index - 1][0]:
+          snake_tail = pygame.transform.rotate(snake_tail, -90)
+        elif loc[1] < snake_locations[index - 1][1]:
+          snake_tail = pygame.transform.rotate(snake_tail, 180)
+        screen.blit(snake_tail, loc)
+    
+    # draw the apple
+    apple = pygame.image.load("./sprites/apple.png").convert()
+    screen.blit(apple, apple_location)
 
     # draw the grid
     for i in range(block_size * num_rows): # num_rows and num_cols should be the same here
@@ -106,7 +134,7 @@ def play_game():
     screen.blit(score_surface, (0, 0))
 
     # move snake every other frame
-    if elapsed_frames % 2 == 0:
+    if elapsed_frames % 3 == 0:
       if direction == "right":
         new_head = [snake_locations[0][0] + block_size, snake_locations[0][1]]
       if direction == "left":
@@ -123,11 +151,11 @@ def play_game():
     # check if apple was eaten
     if snake_locations[0][0] == apple_location[0] and snake_locations[0][1] == apple_location[1]:
       score += 1
+      snake_locations.append(apple_location)
       apple_location = ( # move the apple
         random.randint(0, num_cols - 1) * block_size,
         random.randint(0, num_rows - 1) * block_size
       )
-      snake_locations.append(apple_location)
 
     # check if game over
     if is_game_over(snake_locations):
